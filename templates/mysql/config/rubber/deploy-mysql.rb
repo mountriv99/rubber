@@ -122,7 +122,7 @@ namespace :rubber do
       # Gen just the conf for the given mysql role
       rubber.run_config(:file => "role/#{role}|role/db/", :force => true, :deploy_path => release_path)
 
-      # reconfigure mysql so that it sets up data dir in /mnt with correct files
+      # reconfigure mysql so that it sets up data dir in /ebs with correct files
       sudo_script 'reconfigure-mysql', <<-ENDSCRIPT
         server_package=`dpkg -l | grep mysql-server-[0-9] | awk '{print $2}'`
         dpkg-reconfigure --frontend=noninteractive $server_package

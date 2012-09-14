@@ -103,7 +103,7 @@ namespace :rubber do
       # Gen just the conf for the given postgresql role
       rubber.run_config(:file => "role/(db|postgresql)/", :force => true, :deploy_path => release_path)
 
-      # reconfigure postgresql so that it sets up data dir in /mnt with correct files
+      # reconfigure postgresql so that it sets up data dir in /ebs with correct files
       dirs = [rubber_env.postgresql_data_dir, rubber_env.postgresql_archive_dir]
       sudo_script 'reconfigure-postgresql', <<-ENDSCRIPT
         mkdir -p #{dirs.join(' ')}

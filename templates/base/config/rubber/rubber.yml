@@ -237,12 +237,12 @@ stop_on_error_cmd: "function error_exit { exit 99; }; trap error_exit ERR"
 #       - size: 100 # size of vol in GBs
 #         zone: us-east-1a # zone to create volume in, needs to match host's zone
 #         device: /dev/sdh # OS device to attach volume to
-#         mount: /mnt/mysql # The directory to mount this volume to
+#         mount: /ebs/mysql # The directory to mount this volume to
 #         filesystem: ext3 # the filesystem to create on volume
 #       - size: 10 # size of vol in GBs
 #         zone: us-east-1a # zone to create volume in, needs to match host's zone
 #         device: /dev/sdi # OS device to attach volume to
-#         mount: /mnt/logs # The directory to mount this volume to
+#         mount: /ebs/logs # The directory to mount this volume to
 #         filesystem: ext3 # the filesystem to create on volume
 #
 #       # volumes without mount/filesystem can be used in raid arrays
@@ -267,7 +267,7 @@ stop_on_error_cmd: "function error_exit { exit 99; }; trap error_exit ERR"
 #     packages: [xfsprogs, mdadm]
 #     raid_volumes:
 #       - device: /dev/md0 # OS device to to create raid array on
-#         mount: /mnt/fast # The directory to mount this array to
+#         mount: /ebs/fast # The directory to mount this array to
 #         mount_opts: 'nobootwait' # Recent Ubuntu versions require this flag or SSH will not start on reboot
 #         filesystem: xfs # the filesystem to create on array
 #         filesystem_opts: -f # the filesystem opts in mkfs
@@ -294,7 +294,7 @@ stop_on_error_cmd: "function error_exit { exit 99; }; trap error_exit ERR"
 #             stripes: 2 # Count of stripes for volume
 #             filesystem: xfs # The filesystem to create on the logical volume
 #             filesystem_opts: -f # the filesystem opts in mkfs
-#             mount: /mnt/large_work_dir # The directory to mount this LVM volume to
+#             mount: /ebs/large_work_dir # The directory to mount this LVM volume to
 
 # OPTIONAL: You can also define your own variables here for use when
 # transforming config files, and they will be available in your config
