@@ -5,7 +5,7 @@ set :rails_env, Rubber.env
 on :load do
   set :application, rubber_env.app_name
   set :runner,      rubber_env.app_user
-  set :deploy_to,   "/mnt/#{application}-#{Rubber.env}"
+  set :deploy_to,   "/ebs/#{application}-#{Rubber.env}"
   set :copy_exclude, [".git/*", ".bundle/*", "log/*", ".rvmrc"]
 end
 

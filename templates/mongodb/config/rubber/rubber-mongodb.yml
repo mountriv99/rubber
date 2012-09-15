@@ -1,4 +1,4 @@
-mongodb_data_dir: /mnt/mongodb
+mongodb_data_dir: /ebs/mongodb
 mongodb_log_dir: /var/log/mongodb
 mongodb_log: "#{mongodb_log_dir}/mongodb.log"
 mongodb_pid: "#{mongodb_data_dir}/mongod.lock"

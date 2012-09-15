@@ -18,7 +18,7 @@ db_restore_cmd: "zcat - | mysql -h %host% -u %user% --password=%pass% %name%"
 
 # REQUIRED: The directory the data nodes store the db data in
 #
-db_data_dir: /mnt/mysql_cluster_data
+db_data_dir: /ebs/mysql_cluster_data
 
 role_dependencies:
   mysql_sql: [mysql]

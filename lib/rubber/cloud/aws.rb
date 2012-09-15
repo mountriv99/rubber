@@ -31,9 +31,9 @@ module Rubber
         ec2_key = env.key_file
         ec2_pk = env.pk_file
         ec2_cert = env.cert_file
-        ec2_key_dest = "/mnt/#{File.basename(ec2_key)}"
-        ec2_pk_dest = "/mnt/#{File.basename(ec2_pk)}"
-        ec2_cert_dest = "/mnt/#{File.basename(ec2_cert)}"
+        ec2_key_dest = "/ebs/#{File.basename(ec2_key)}"
+        ec2_pk_dest = "/ebs/#{File.basename(ec2_pk)}"
+        ec2_cert_dest = "/ebs/#{File.basename(ec2_cert)}"
 
         # validate all needed config set
         ["key_file", "pk_file", "cert_file", "account", "secret_access_key", "image_bucket"].each do |k|
@@ -54,7 +54,7 @@ module Rubber
           rvm use system
           export RUBYLIB=/usr/lib/site_ruby/
           unset RUBYOPT
-          nohup ec2-bundle-vol --batch -d /mnt -k #{ec2_pk_dest} -c #{ec2_cert_dest} -u #{env.account} -p #{image_name} -r #{arch} &> /tmp/ec2-bundle-vol.log &
+          nohup ec2-bundle-vol --batch -d /ebs -k #{ec2_pk_dest} -c #{ec2_cert_dest} -u #{env.account} -p #{image_name} -r #{arch} &> /tmp/ec2-bundle-vol.log &
           sleep 1
 
           echo "Creating image from instance volume..."
@@ -70,7 +70,7 @@ module Rubber
           export RUBYLIB=/usr/lib/site_ruby/
           unset RUBYOPT
           echo "Uploading image to S3..."
-          ec2-upload-bundle --batch -b #{env.image_bucket} -m /mnt/#{image_name}.manifest.xml -a #{env.access_key} -s #{env.secret_access_key}
+          ec2-upload-bundle --batch -b #{env.image_bucket} -m /ebs/#{image_name}.manifest.xml -a #{env.access_key} -s #{env.secret_access_key}
         CMD
 
         image_location = "#{env.image_bucket}/#{image_name}.manifest.xml"
