@@ -1,6 +1,9 @@
 $:.unshift(File.dirname(__FILE__))
 
+require 'monitor'
+
 module Rubber
+  extend MonitorMixin
 
   def self.initialize(project_root, project_env)
     return if defined?(RUBBER_ROOT) && defined?(RUBBER_ENV)
@@ -50,11 +53,23 @@ module Rubber
   end
 
   def self.config
-    Rubber::Configuration.rubber_env
+    unless @config
+      synchronize do
+        @config ||= Rubber::Configuration.rubber_env
+      end
+    end
+
+    @config
   end
 
   def self.instances
-    Rubber::Configuration.rubber_instances
+    unless @instances
+      synchronize do
+        @instances ||= Rubber::Configuration.rubber_instances
+      end
+    end
+
+    @instances
   end
   
   def self.cloud(capistrano = nil)
@@ -75,6 +90,11 @@ require 'rubber/instance'
 require 'rubber/util'
 require 'rubber/cloud'
 require 'rubber/dns'
+
+if defined?(::Vagrant)
+  require 'rubber/vagrant/plugin'
+end
+
 
 if defined?(Rails::Railtie)
   module Rubber

@@ -3,12 +3,17 @@ require 'rubber/dns/zerigo'
 
 class ZerigoTest < Test::Unit::TestCase
 
+# This entire test is disabled because the Zerigo mocks in fog are utterly broken, currently.  The following fix
+# needs to be made upstream before these will run again:
+# https://github.com/fog/fog/commit/6f8c0e61201f1f46d568f8e1ebbc1aa0e2c65d32
+
+=begin
    context "fog zerigo dns" do
 
       setup do
         env = {'email' => get_secret('dns_providers.zerigo.email') || 'xxx',
                'token' => get_secret('dns_providers.zerigo.token') || 'yyy'}
-        @env = Rubber::Configuration::Environment::BoundEnv.new(env, nil, nil)
+        @env = Rubber::Configuration::Environment::BoundEnv.new(env, nil, nil, nil)
 
         @dns = Rubber::Dns::Zerigo.new(@env)
         destroy_test_domains(@dns)
@@ -25,7 +30,7 @@ class ZerigoTest < Test::Unit::TestCase
                      }
                  }
           }
-          @env = Rubber::Configuration::Environment::BoundEnv.new(env, nil, nil)
+          @env = Rubber::Configuration::Environment::BoundEnv.new(env, nil, nil, nil)
           
           provider = Rubber::Dns::get_provider(@env.dns_provider, @env)
           assert provider
@@ -182,5 +187,5 @@ class ZerigoTest < Test::Unit::TestCase
       end
 
    end
-  
+=end
 end

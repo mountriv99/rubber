@@ -30,6 +30,11 @@ domain: foo.com
 #
 # rubber_secret: "#{File.expand_path('~') + '/.ec2' + (Rubber.env == 'production' ? '' : '_dev') + '/rubber-secret.yml' rescue ''}"
 
+# OPTIONAL: Encryption key that was used to obfuscate the contents of rubber-secret.yml with "rubber util:obfuscation" 
+# Not that much better when stored in here, but you could use a ruby snippet in here to fetch it from a key server or something
+#
+# rubber_secret_key: "XXXyyy=="
+
 # REQUIRED All known cloud providers with the settings needed to configure them
 # There's only one working cloud provider right now - Amazon Web Services
 # To implement another, clone lib/rubber/cloud/aws.rb or make the fog provider 
@@ -38,21 +43,24 @@ domain: foo.com
 cloud_providers:
   aws:
     # REQUIRED The AWS region that you want to use.
-    # 
+    #
     # Options include
-    # us-east-1
-    # eu-west-1
-    # ap-northeast-1
-    # ap-southeast-1
-    # ap-southeast-2
+    # ap-northeast-1 # Asia Pacific (Tokyo) Region
+    # ap-southeast-1 # Asia Pacific (Singapore) Region
+    # ap-southeast-2 # Asia Pacific (Sydney) Region
+    # eu-west-1      # EU (Ireland) Region
+    # sa-east-1      # South America (Sao Paulo) Region
+    # us-east-1      # US East (Northern Virginia) Region
+    # us-west-1      # US West (Northern California) Region
+    # us-west-2      # US West (Oregon) Region
     #
     region: us-east-1
-    
+
     # REQUIRED The amazon keys and account ID (digits only, no dashes) used to access the AWS API
     #
     access_key: XXX
     secret_access_key: YYY
-    account: ZZZ
+    account: 'ZZZ'
 
     # REQUIRED:  The name of the amazon keypair and location of its private key
     #
@@ -78,8 +86,8 @@ cloud_providers:
     # Ubuntu 12.04 Precise instance-store 64-bit: ami-eafa5883
     #
     # m1.small or m1.large or m1.xlarge
-    image_type: m1.small
-    image_id: ami-eafa5883
+    image_type: c1.medium
+    image_id: ami-b6089bdf
 
     # OPTIONAL: EC2 spot instance request support.
     #
@@ -93,7 +101,21 @@ cloud_providers:
     # If a spot instance request can't be fulfilled in 3 minutes, fallback to on-demand instance creation.  If not set,
     # the default is infinite.
     # spot_instance_request_timeout: 180
-    
+
+  digital_ocean:
+    # REQUIRED: The Digital Ocean region that you want to use.
+    #
+    # Options include
+    # New York 1
+    # San Francisco 1
+    #
+    # These change often.  Check https://www.digitalocean.com/droplets/new for the most up to date options.
+    region: New York 1
+
+    # REQUIRED: The image name and type for creating instances.
+    image_id: Ubuntu 12.04 x64
+    image_type: 512MB
+
   # Use an alternate cloud provider supported by fog.  This doesn't fully work
   # yet due to differences in providers within fog, but gives you a starting
   # point for contributing a new provider to rubber.  See rubber/lib/rubber/cloud(.rb)
@@ -110,10 +132,10 @@ cloud_providers:
 cloud_provider: aws
 
 # OPTIONAL: Where to store instance data.
-# 
+#
 # Allowed forms are:
 # filesystem: "file:#{Rubber.root}/config/rubber/instance-#{Rubber.env}.yml"
-# cloud storage (s3): "storage:#{cloud_provider.aws.backup_bucket}/RubberInstances_#{app_name}/instance-#{Rubber.env}.yml"
+# cloud storage (s3): "storage:#{cloud_providers.aws.backup_bucket}/RubberInstances_#{app_name}/instance-#{Rubber.env}.yml"
 # cloud table (simpledb): "table:RubberInstances_#{app_name}_#{Rubber.env}"
 #
 # If you need to port between forms, load the rails console then:
@@ -130,6 +152,12 @@ cloud_provider: aws
 # your project code, so that provides some safety.
 #
 # instance_storage_backup: "storage:#{cloud_providers.aws.backup_bucket}/RubberInstances_#{app_name}/instance-#{Rubber.env}-#{Time.now.strftime('%Y%m%d-%H%M%S')}.yml"
+
+# OPTIONAL: Default ports for security groups
+web_port: 80
+web_ssl_port: 443
+web_tools_port: 8080
+web_tools_ssl_port: 8443
 
 # OPTIONAL: Define security groups
 # Each security group is a name associated with a sequence of maps where the
@@ -161,9 +189,36 @@ security_groups:
         from_port: 22
         to_port: 22
         source_ips: [0.0.0.0/0]
+  web:
+    description: "To open up port #{web_port}/#{web_ssl_port} for http server on web role"
+    rules:
+      - protocol: tcp
+        from_port: "#{web_port}"
+        to_port: "#{web_port}"
+        source_ips: [0.0.0.0/0]
+      - protocol: tcp
+        from_port: "#{web_ssl_port}"
+        to_port: "#{web_ssl_port}"
+        source_ips: [0.0.0.0/0]
+  web_tools:
+    description: "To open up port #{web_tools_port}/#{web_tools_ssl_port} for internal/tools http server"
+    rules:
+      - protocol: tcp
+        from_port: "#{web_tools_port}"
+        to_port: "#{web_tools_port}"
+        source_ips: [0.0.0.0/0]
+      - protocol: tcp
+        from_port: "#{web_tools_ssl_port}"
+        to_port: "#{web_tools_ssl_port}"
+        source_ips: [0.0.0.0/0]
 
 # OPTIONAL: The default security groups to create instances with
 assigned_security_groups: [default]
+roles:
+  web:
+    assigned_security_groups: [web]
+  web_tools:
+    assigned_security_groups: [web_tools]
 
 # OPTIONAL: Automatically create security groups for each host and role
 # EC2 doesn't allow one to change what groups an instance belongs to after
@@ -180,13 +235,18 @@ isolate_security_groups: true
 # differ from those in rubber
 prompt_for_security_group_sync: true
 
+# OPTIONAL: A list of CIDR address blocks that represent private networks for your cluster.
+# Set this to open up wide access to hosts in your network.  Consequently, setting the CIDR block
+# to anything other than a private, unroutable block would be a massive security hole.
+private_networks: [10.0.0.0/8]
+
 # OPTIONAL: The packages to install on all instances
 # You can install a specific version of a package by using a sub-array of pkg, version
 # For example, packages: [[rake, 0.7.1], irb]
-packages: [postfix, build-essential, git-core, ec2-ami-tools, libxslt-dev, ntp]
+packages: [postfix, build-essential, git-core, libxslt-dev, ntp]
 
 # OPTIONAL: gem sources to setup for rubygems
-# gemsources: ["http://rubygems.org", "http://gems.github.com"]
+# gemsources: ["https://rubygems.org"]
 
 # OPTIONAL: The gems to install on all instances
 # You can install a specific version of a gem by using a sub-array of gem, version
@@ -205,7 +265,8 @@ stop_on_error_cmd: "function error_exit { exit 99; }; trap error_exit ERR"
 # specify a different set here
 #
 # staging_roles: "web,app,db:primary=true"
-
+# Auto detect staging roles
+staging_roles: "#{known_roles.reject {|r| r =~ /slave/ || r =~ /^db$/ }.join(',')}"
 
 # OPTIONAL: Lets one assign amazon elastic IPs (static IPs) to your instances
 #           You should typically set this on the role/host level rather than
@@ -224,10 +285,10 @@ stop_on_error_cmd: "function error_exit { exit 99; }; trap error_exit ERR"
 #           of zones
 # availability_zone: us-east-1a
 
-# OPTIONAL: If you want t use Elastic Block Store (EBS) persistent
+# OPTIONAL: If you want to use Elastic Block Store (EBS) persistent
 # volumes, add them to host specific overrides and they will get created
 # and assigned to the instance.  On initial creation, the volume will get
-# attached _and_ formatted, but if your host disapears and you recreate
+# attached _and_ formatted, but if your host disappears and you recreate
 # it, the volume will only get remounted thereby preserving your data
 #
 # hosts:
@@ -298,12 +359,12 @@ stop_on_error_cmd: "function error_exit { exit 99; }; trap error_exit ERR"
 
 # OPTIONAL: You can also define your own variables here for use when
 # transforming config files, and they will be available in your config
-# templates as  <%= rubber_env.var_name %>
+# templates as  <%%= rubber_env.var_name %>
 #
 # var_name: var_value
 
-# All variables can also be overridden on the role and/or host level by creating
-# a sub level to the config under roles and hosts
+# All variables can also be overridden on the role, environment and/or host level by creating
+# a sub level to the config under roles, environments and hosts.  The precedence is host, environment, role
 # e.g. to install mysql only on db role, and awstats only on web01:
 
 # OPTIONAL: Role specific overrides
@@ -312,6 +373,13 @@ stop_on_error_cmd: "function error_exit { exit 99; }; trap error_exit ERR"
 #     packages: []
 #   somerole2:
 #     myconfig: someval
+
+# OPTIONAL: Environment specific overrides
+# environments:
+#   staging:
+#     myconfig: otherval
+#   production:
+#     myconfig: val
 
 # OPTIONAL: Host specific overrides
 # hosts:

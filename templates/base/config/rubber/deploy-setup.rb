@@ -1,83 +1,66 @@
 namespace :rubber do
   namespace :base do
-  
+
     rubber.allow_optional_tasks(self)
 
-    before "rubber:setup_gem_sources", "rubber:base:install_rvm"
-    task :install_rvm do
-      rubber.sudo_script "install_rvm", <<-ENDSCRIPT
-        if [[ ! `rvm --version 2> /dev/null` =~ "#{rubber_env.rvm_version}" ]]; then
-          cd /tmp
-          curl -s https://raw.github.com/wayneeseguin/rvm/master/binscripts/rvm-installer -o rvm-installer
-          chmod +x rvm-installer
-          rm -f /etc/rvmrc
-          rvm_path=#{rubber_env.rvm_prefix} ./rvm-installer --version #{rubber_env.rvm_version}
+    before "rubber:setup_gem_sources", "rubber:base:install_ruby_build"
+    task :install_ruby_build do
+      rubber.sudo_script "install_ruby_build", <<-ENDSCRIPT
+      if [[ ! `ruby-build --version 2> /dev/null` =~ "#{rubber_env.ruby_build_version}" ]]; then
+        echo "Installing ruby-build v#{rubber_env.ruby_build_version}"
+        wget -q https://github.com/sstephenson/ruby-build/archive/v#{rubber_env.ruby_build_version}.tar.gz -O /tmp/ruby-build.tar.gz
 
-          # Set up the rubygems version
-          sed -i 's/rubygems_version=.*/rubygems_version=#{rubber_env.rubygems_version}/' #{rubber_env.rvm_prefix}/config/db
+        # Install ruby-build.
+        tar -C /tmp -zxf /tmp/ruby-build.tar.gz
+        cd /tmp/ruby-build-*
+        ./install.sh
 
-          # Set up the rake version
-          sed -i 's/rake.*/rake -v#{rubber_env.rake_version}/' #{rubber_env.rvm_prefix}/gemsets/default.gems
-          sed -i 's/rake.*/rake -v#{rubber_env.rake_version}/' #{rubber_env.rvm_prefix}/gemsets/global.gems
+        # Clean up after ourselves.
+        cd /root
+        rm -rf /tmp/ruby-build-*
+        rm -f /tmp/ruby-build.tar.gz
 
-          # Set up the .gemrc file
-          if [[ ! -f ~/.gemrc ]]; then
-            echo "--- " >> ~/.gemrc
-          fi
+        # Get rid of RVM if this is an older rubber installation.
+        if type rvm &> /dev/null; then
+          echo -en "yes\n" | rvm implode
 
-          if ! grep -q 'gem: ' ~/.gemrc; then
-            echo "gem: --no-ri --no-rdoc" >> ~/.gemrc
-          fi
+          rm -rf /usr/local/rvm
+          rm -f /usr/bin/rvm*
+          rm -f ~/.gemrc
         fi
+      fi
       ENDSCRIPT
     end
 
-    # ensure that the rvm profile script gets sourced by reconnecting
-    after "rubber:base:install_rvm" do
+    after "rubber:base:install_ruby_build", "rubber:base:install_ruby"
+    task :install_ruby do
+      rubber.sudo_script "install_ruby", <<-ENDSCRIPT
+      installed_ruby_ver=`which ruby | cut -d / -f 5`
+      desired_ruby_ver="#{rubber_env.ruby_version}"
+      if [[ ! $installed_ruby_ver =~ $desired_ruby_ver ]]; then
+        echo "Compiling and installing ruby $desired_ruby_ver.  This may take a while ..."
+
+        nohup ruby-build #{rubber_env.ruby_version} #{rubber_env.ruby_path} &> /tmp/install_ruby.log &
+        bg_pid=$!
+        sleep 1
+
+        while kill -0 $bg_pid &> /dev/null; do
+          echo -n .
+          sleep 5
+        done
+        
+        # this returns exit code even if pid has already died, and thus triggers fail fast shell error
+        wait $bg_pid
+
+        echo "export RUBYOPT=rubygems\nexport PATH=#{rubber_env.ruby_path}/bin:$PATH" > /etc/profile.d/ruby.sh
+        echo "--- \ngem: --no-ri --no-rdoc" > /etc/gemrc
+      fi
+      ENDSCRIPT
+    end
+    
+    # ensure that the profile script gets sourced by reconnecting
+    after "rubber:base:install_ruby" do
       teardown_connections_to(sessions.keys)
-    end
-
-    after "rubber:base:install_rvm", "rubber:base:install_rvm_ruby"
-    task :install_rvm_ruby do
-      opts = get_host_options('rvm_ruby')
-      
-      # sudo_script only takes a single hash with host -> VAR, so combine our
-      # two vars so we can extract them out in the bash script
-      install_opts = get_host_options('rvm_install_options')
-      install_opts.each do |k, v|
-        opts[k] = "#{opts[k]} #{v}"
-      end
-      
-      install_rvm_ruby_script = <<-ENDSCRIPT
-        rvm_ver=$1
-        shift
-        install_opts=$*
-
-        if [[ ! `rvm list default 2> /dev/null` =~ "$rvm_ver" ]]; then
-          echo "RVM is compiling/installing ruby $rvm_ver, this may take a while"
-
-          nohup rvm install $rvm_ver $install_opts &> /tmp/install_rvm_ruby.log &
-          sleep 1
-
-          while true; do
-            if ! ps ax | grep -q "[r]vm install"; then break; fi
-            echo -n .
-            sleep 5
-          done
-
-          # need to set default after using once or something in env is broken
-          rvm use $rvm_ver &> /dev/null
-          rvm use $rvm_ver --default
-
-          # Something flaky with $PATH having an entry for "bin" which breaks
-          # munin, the below seems to fix it
-          rvm use $rvm_ver
-          rvm repair environments
-          rvm use $rvm_ver
-        fi
-      ENDSCRIPT
-      opts[:script_args] = '$CAPISTRANO:VAR$'
-      rubber.sudo_script "install_rvm_ruby", install_rvm_ruby_script, opts
     end
 
     after "rubber:install_packages", "rubber:base:configure_git" if scm == "git"
@@ -90,7 +73,7 @@ namespace :rubber do
         fi
       ENDSCRIPT
     end
-    
+
     # We need a rails user for safer permissions used by deploy.rb
     after "rubber:install_packages", "rubber:base:custom_install"
     task :custom_install do
@@ -115,5 +98,9 @@ namespace :rubber do
       ENDSCRIPT
     end
 
+    after "rubber:bootstrap", "rubber:base:reinstall_virtualbox_additions"
+    task :reinstall_virtualbox_additions, :only => { :provider => 'vagrant' } do
+      rsudo "service vboxadd setup"
+    end
   end
 end
