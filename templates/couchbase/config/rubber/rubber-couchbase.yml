@@ -3,7 +3,7 @@ couchbase_pkg_url: "http://packages.couchbase.com/releases/#{couchbase_version}/
 
 couchbase_pid_file: /opt/couchbase/var/lib/couchbase/couchbase-server.pid
 couchbase_cli: /opt/couchbase/bin/couchbase-cli
-couchbase_db_dir: /mnt/couchbase/data
+couchbase_db_dir: /ebs/couchbase/data
 
 couchbase_admin_username: Administrator
 couchbase_admin_password: password

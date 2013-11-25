@@ -37,13 +37,13 @@ namespace :rubber do
             echo 'installing solr'
             curl -o /tmp/apache-solr-4.0.0.tgz http://ftp.heanet.ie/mirrors/www.apache.org/dist/lucene/solr/4.0.0/apache-solr-4.0.0.tgz
             tar -zxf /tmp/apache-solr-4.0.0.tgz -C /tmp
-            cp /tmp/apache-solr-4.0.0/dist/apache-solr-4.0.0.war /mnt/apache-tomcat-7.0.34/webapps/solr.war
+            cp /tmp/apache-solr-4.0.0/dist/apache-solr-4.0.0.war /ebs/apache-tomcat-7.0.34/webapps/solr.war
             rm -fr /tmp/apache-solr-4.0.0*
 
             echo 'setting up solr'
             mkdir -p #{rubber_env.solr_home_dest_foler}/solr/data
             mkdir -p #{rubber_env.solr_home_dest_foler}/solr/#{rubber_env.core_name}
-            tar -zxf /tmp/solr_conf.tar.gz -C /mnt/solr/#{rubber_env.core_name}
+            tar -zxf /tmp/solr_conf.tar.gz -C /ebs/solr/#{rubber_env.core_name}
             mv /tmp/#{rubber_env.solr_xml} #{rubber_env.solr_home_dest_foler}/solr
             rm /tmp/solr_conf.tar.gz
           fi
